@@ -190,5 +190,5 @@ function computeEquity(bars, key, alen, barMs, feeRate, initCap) {
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { computeSignals: computeSignals, decideAction: decideAction, WARMUP_BARS: WARMUP_BARS };
+  module.exports = { computeSignals: computeSignals, decideAction: decideAction, computeEquity: computeEquity, WARMUP_BARS: WARMUP_BARS };
 }

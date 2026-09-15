@@ -4,7 +4,10 @@
 const core = require('./core.js');
 const fs = require('fs');
 
-const INST = process.env.UT_INST || 'ETH-USDT-SWAP';
+// Signal source = OKX SPOT (ETH-USDT): on the 2026-09-15 23:00 BJ flip, spot matched
+// the TV ETHUSDT.P alert and OKX strategy execution to the minute; the SWAP book
+// crossed 15 min earlier (spot/perp basis), so spot is the faithful TV mirror.
+const INST = process.env.UT_INST || 'ETH-USDT';
 const BAR = process.env.UT_BAR || '15m';
 const BARMS = 15 * 60 * 1000;
 const KEY = parseFloat(process.env.UT_KEY || '50');

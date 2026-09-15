@@ -1,5 +1,7 @@
 # UT Bot 值守（影子引擎）
 
+**📊 实时手册页：[yuf22300-lmyfy.github.io/utbot-watch](https://yuf22300-lmyfy.github.io/utbot-watch/)**（权益曲线 + 每笔盈亏 + 交易流水 + 实时浮动）
+
 [![watch](https://github.com/yuf22300-lmyfy/utbot-watch/actions/workflows/watch.yml/badge.svg)](https://github.com/yuf22300-lmyfy/utbot-watch/actions/workflows/watch.yml)
 
 GitHub Actions **每 5 分钟**重算一次 UT Bot 信号，与 TradingView + OKX 策略机器人并行运行的**第二引擎**。

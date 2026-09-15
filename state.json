@@ -5,11 +5,13 @@
   "key": 50,
   "atr": 10,
   "dir": -1,
-  "sinceCloseTs": 1789484400000,
-  "sincePx": 2408.13,
-  "sinceStop": 3136.95,
-  "sinceFill": 2408.13,
-  "seededAt": "2026-09-15T17:06:00.000Z",
-  "flipCount": 1,
-  "note": "seed; flip#1 reconciled with TV alert + OKX strategy 'eth utbot final' execution, both 2026-09-15 23:00 Beijing"
+  "sinceCloseTs": 1789483500000,
+  "sincePx": 2415.57,
+  "sinceStop": 3076.0441992138194,
+  "sinceFill": 2415.58,
+  "prevDir": -1,
+  "prevSinceCloseTs": 1789484400000,
+  "flipCount": 2,
+  "updatedAt": "2026-09-15T17:24:05.990Z",
+  "note": ""
 }

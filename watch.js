@@ -4,10 +4,12 @@
 const core = require('./core.js');
 const fs = require('fs');
 
-// Signal source = OKX SPOT (ETH-USDT): on the 2026-09-15 23:00 BJ flip, spot matched
-// the TV ETHUSDT.P alert and OKX strategy execution to the minute; the SWAP book
-// crossed 15 min earlier (spot/perp basis), so spot is the faithful TV mirror.
-const INST = process.env.UT_INST || 'ETH-USDT';
+// Signal source = ETH-USDT-SWAP (perp). Ground truth (2026-09-16): the TV chart runs
+// ETHUSDT.P on the OKX feed and the OKX strategy trades the swap — the actual flip
+// executed 22:45 BJ @2415, and SWAP candles give signal 22:45 @2415.57 (next-bar open
+// 2415.58), a to-the-cent match. OKX SPOT crossed one bar later (23:00 @2408.13) and
+// must NOT be used.
+const INST = process.env.UT_INST || 'ETH-USDT-SWAP';
 const BAR = process.env.UT_BAR || '15m';
 const BARMS = 15 * 60 * 1000;
 const KEY = parseFloat(process.env.UT_KEY || '50');

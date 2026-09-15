@@ -68,9 +68,30 @@ async function fetchPage(after, allowCandles) {
   try { state = JSON.parse(fs.readFileSync('state.json', 'utf8')); } catch (e) {}
   const act = core.decideAction(state, sig);
 
-  if (act === 'nochange') {
+  // equity replay for the handbook page (100U 1x compound baseline, 0.1%/side)
+  const eq = core.computeEquity(bars, KEY, ALEN, BARMS, 0.001, 100);
+  console.log(`EQUITY eq=${eq.eq} ret=${eq.retPct}% realized=${eq.realized} upl=${eq.position ? eq.position.upl : 0} dd=${eq.maxDDPct}% trades=${eq.trades.length} wr=${eq.winRate}% curvePts=${eq.curve.length}`);
+  const EQ_THROTTLE_MS = 6 * 3600 * 1000; // curve refresh cadence; flips always push immediately
+  const needEq = act !== 'nochange' || !state || !state.lastEqTs || (Date.now() - state.lastEqTs > EQ_THROTTLE_MS);
+
+  if (act === 'nochange' && !needEq) {
     console.log(`NO_CHANGE dir=${state.dir} since=${bjTime(state.sinceCloseTs)}BJ`);
     return;
+  }
+
+  if (needEq) {
+    fs.mkdirSync('_bot', { recursive: true });
+    const payload = {
+      v: 1, inst: INST, bar: BAR, key: KEY, atr: ALEN,
+      generatedAt: new Date().toISOString(),
+      windowStart: utcTime(eq.windowStart), windowEnd: utcTime(eq.windowEnd),
+      stats: { eq: eq.eq, retPct: eq.retPct, realized: eq.realized, initCap: eq.initCap, fee: eq.fee, trades: eq.trades.length, wins: eq.wins, winRate: eq.winRate, maxDDPct: eq.maxDDPct },
+      position: eq.position,
+      trades: eq.trades,
+      curve: eq.curve
+    };
+    fs.writeFileSync('_bot/equity.json', JSON.stringify(payload) + '\n');
+    console.log('EQUITY_JSON written');
   }
 
   if (act === 'seed') {
@@ -78,7 +99,7 @@ async function fetchPage(after, allowCandles) {
       v: 1, inst: INST, bar: BAR, key: KEY, atr: ALEN,
       dir: sig.dir, sinceCloseTs: sig.sinceCloseTs, sincePx: sig.sincePx,
       sinceStop: sig.sinceStop, sinceFill: sig.sinceFill,
-      seededAt: new Date().toISOString(), note: 'seed'
+      seededAt: new Date().toISOString(), lastEqTs: Date.now(), note: 'seed'
     };
     fs.writeFileSync('state.json', JSON.stringify(st, null, 2) + '\n');
     if (!fs.existsSync('flips.md')) {
@@ -89,6 +110,21 @@ async function fetchPage(after, allowCandles) {
     return;
   }
 
+  if (act === 'nochange') {
+    // throttle-window equity refresh: rewrite state with fresh sig + lastEqTs, keep flip history fields
+    const st = {
+      v: 1, inst: INST, bar: BAR, key: KEY, atr: ALEN,
+      dir: sig.dir, sinceCloseTs: sig.sinceCloseTs, sincePx: sig.sincePx,
+      sinceStop: sig.sinceStop, sinceFill: sig.sinceFill,
+      prevDir: state.prevDir, prevSinceCloseTs: state.prevSinceCloseTs,
+      flipCount: state.flipCount || 1, seededAt: state.seededAt,
+      lastEqTs: Date.now(), updatedAt: new Date().toISOString(), note: state.note || ''
+    };
+    fs.writeFileSync('state.json', JSON.stringify(st, null, 2) + '\n');
+    console.log(`EQ_REFRESH dir=${sig.dir} since=${bjTime(sig.sinceCloseTs)}BJ`);
+    return;
+  }
+
   // flip
   const idx = (state.flipCount || 0) + 1;
   const st = {
@@ -96,7 +132,7 @@ async function fetchPage(after, allowCandles) {
     dir: sig.dir, sinceCloseTs: sig.sinceCloseTs, sincePx: sig.sincePx,
     sinceStop: sig.sinceStop, sinceFill: sig.sinceFill,
     prevDir: state.dir, prevSinceCloseTs: state.sinceCloseTs,
-    flipCount: idx, updatedAt: new Date().toISOString(),
+    flipCount: idx, lastEqTs: Date.now(), updatedAt: new Date().toISOString(),
     note: sig.sinceFill ? '' : 'fill-pending (signal bar is the newest closed bar)'
   };
   fs.writeFileSync('state.json', JSON.stringify(st, null, 2) + '\n');

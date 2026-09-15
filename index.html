@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#131722">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>UT Bot 值守手册 · ETH</title>
+<style>
+  :root{ --bg:#131722; --panel:#1e222d; --border:#2a2e39; --text:#d1d4dc; --muted:#787b86;
+    --blue:#2962ff; --green:#26a69a; --red:#ef5350; --amber:#ffb74d; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:16px; max-width:1000px; margin:0 auto;}
+  h1{font-size:18px; color:#fff; margin-bottom:2px;}
+  .sub{color:var(--muted); font-size:12px; margin-bottom:12px;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
+  .card h2{font-size:14px; margin-bottom:10px; color:#fff;}
+  table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+  th{color:var(--muted); font-weight:500; text-align:right; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap;}
+  td{padding:7px 8px; border-bottom:1px solid #22262f; text-align:right; white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left;}
+  .up{color:var(--green);} .dn{color:var(--red);} .mut{color:var(--muted);} .am{color:var(--amber);}
+  .tag{display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px;}
+  .tag.long{background:rgba(38,166,154,.15); color:var(--green);}
+  .tag.short{background:rgba(239,83,80,.15); color:var(--red);}
+  .note{color:var(--muted); font-size:12px; line-height:1.8;}
+  .note b{color:var(--text);}
+  .botChips{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px;}
+  .chip{border-radius:8px; padding:5px 12px; font-size:12px; color:var(--muted); background:#131722; border:1px solid var(--border);}
+  .chip b{font-size:15px; margin-left:4px; color:var(--text);}
+  .botCharts{display:flex; gap:12px; margin-top:12px; flex-wrap:wrap;}
+  .botChartBox{flex:1 1 300px; background:#131722; border:1px solid var(--border); border-radius:8px; padding:10px 12px;}
+  .botChartTitle{font-size:12px; color:var(--muted); margin-bottom:6px;}
+  #tradeT tbody tr:hover{background:#232836;}
+  .bigdir{font-size:16px; font-weight:600;}
+  @media (max-width:600px){
+    body{padding:10px 10px 24px; font-size:13px;}
+    .card{padding:10px 12px; border-radius:8px;}
+    table{font-size:12px;}
+    .card{overflow-x:auto;}
+  }
+</style>
+</head>
+<body>
+<h1>UT Bot 值守手册 <span style="font-size:11px; color:#787b86; font-weight:400;">v1 · 影子引擎</span></h1>
+<div class="sub">ETH · 15分钟 · key=50 / ATR=10 · OKX现货K线 · GitHub Actions 每5分钟全量重算 · <b>只算只记，不下单</b> · 收益口径 = 100U 起步 1倍复利 · 0.1%手续费/边</div>
+
+<div class="card" id="botCard" style="border-color:#26a69a;">
+  <h2>🤖 引擎实况<span id="sync" class="mut" style="font-size:11px; font-weight:400; margin-left:8px;"></span></h2>
+  <div id="summary" class="mut">正在拉取云端数据…</div>
+  <div class="botChips" id="chips"></div>
+  <div class="botCharts">
+    <div class="botChartBox"><div class="botChartTitle" id="eqTitle">权益曲线（含浮动, 100U 基准）</div><div id="eqLine"></div></div>
+    <div class="botChartBox"><div class="botChartTitle">每笔已平仓盈亏 %</div><div id="tradeBars"></div></div>
+  </div>
+  <div class="note" style="margin-top:12px;"><b>交易流水</b>（时间=北京时间；入场=信号K线收盘后次K线开盘成交，与 TV/OKX 对账口径一致）</div>
+  <table class="hist" id="tradeT"><thead><tr><th>#</th><th>方向</th><th>入场(北京)</th><th>入场价</th><th>出场(北京)</th><th>出场价</th><th>盈亏%</th><th>盈亏(U)</th><th>权益</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:10px;">
+    口径说明：曲线与流水为<b>引擎基准账户</b>（100U · 1倍 · 全仓复利 · 0.1%费/边 · 次K线开盘成交），用于和 TV 图/OKX 实盘逐笔对账；你实盘策略的 2 倍杠杆盈亏约为图中数字的 2 倍（回撤也是）。数据每 6 小时刷新一次，翻转时即时推送；现价与浮动为页面实时拉取。
+  </div>
+</div>
+
+<div class="card">
+  <h2>这个页面怎么用</h2>
+  <div class="note">
+    · <b>看方向：</b>实况卡片第一行 = 引擎当前多头/空头 + 自何时 + 入场价；和 TV 警报、OKX 策略「eth utbot final」应该始终一致。<br>
+    · <b>看波动：</b>权益曲线 = 基准账户的净值变化（含当前持仓浮动）；绿色=高于起点，红色=低于起点。<br>
+    · <b>看战绩：</b>每笔柱状图 + 交易流水表，红亏绿赚一目了然。<br>
+    · <b>心跳：</b>GitHub Actions 每 5 分钟自动重算；卡片右上角显示数据时间。打不开或数据停更 → 去 <a href="https://github.com/yuf22300-lmyfy/utbot-watch/actions" style="color:var(--blue);">Actions 页</a>看运行状态。<br>
+    · 翻转历史与对账记录在 <a href="https://github.com/yuf22300-lmyfy/utbot-watch/blob/main/flips.md" style="color:var(--blue);">flips.md</a>。
+  </div>
+</div>
+
+<script>
+var EQ_API = "https://api.github.com/repos/yuf22300-lmyfy/utbot-watch/contents/_bot/equity.json";
+var EQ_RAW = "https://raw.githubusercontent.com/yuf22300-lmyfy/utbot-watch/main/_bot/equity.json";
+var TICKER_API = "https://www.okx.com/api/v5/market/ticker?instId=ETH-USDT";
+var eqData = null, livePx = null;
+
+function bj(ms){
+  var d = new Date(ms + 8 * 3600 * 1000);
+  function p2(x){ return (x < 10 ? "0" : "") + x; }
+  return d.getUTCFullYear() + "-" + p2(d.getUTCMonth() + 1) + "-" + p2(d.getUTCDate()) + " " + p2(d.getUTCHours()) + ":" + p2(d.getUTCMinutes());
+}
+function bjShort(ms){
+  var d = new Date(ms + 8 * 3600 * 1000);
+  function p2(x){ return (x < 10 ? "0" : "") + x; }
+  return p2(d.getUTCMonth() + 1) + "/" + p2(d.getUTCDate()) + " " + p2(d.getUTCHours()) + ":" + p2(d.getUTCMinutes());
+}
+function fetchTimeout(url, ms){
+  return Promise.race([
+    fetch(url).then(function(r){ if (!r.ok) throw new Error("http " + r.status); return r; }),
+    new Promise(function(_, rej){ setTimeout(function(){ rej(new Error("timeout")); }, ms); })
+  ]);
+}
+function loadEq(){
+  return fetchTimeout(EQ_API, 9000).then(function(r){ return r.json(); }).then(function(j){
+    return JSON.parse(decodeURIComponent(escape(atob(String(j.content).replace(/\s/g, "")))));
+  }).catch(function(){
+    return fetchTimeout(EQ_RAW, 9000).then(function(r){ return r.json(); });
+  });
+}
+function loadPx(){
+  return fetchTimeout(TICKER_API, 6000).then(function(r){ return r.json(); }).then(function(j){
+    if (j && j.data && j.data[0]) livePx = parseFloat(j.data[0].last);
+  }).catch(function(){});
+}
+function chip(label, val, cls){
+  return '<div class="chip">' + label + '<b class="' + (cls || "") + '">' + val + '</b></div>';
+}
+function fmt(v, d){ return Number(v).toFixed(d == null ? 2 : d); }
+function sgn(v, d){ return (v >= 0 ? "+" : "") + fmt(v, d); }
+
+function svgEqLine(curve, initCap){
+  if (!curve || curve.length < 2) return '<div class="mut" style="font-size:12px; padding:20px 0; text-align:center;">还没有曲线数据</div>';
+  var W = 560, H = 190, padX = 40, padT = 14, padB = 22;
+  var vals = [], i;
+  for (i = 0; i < curve.length; i++) vals.push(curve[i][1]);
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  var lo = Math.min(mn, initCap), hi = Math.max(mx, initCap);
+  if (hi - lo < 1){ hi += 0.5; lo -= 0.5; }
+  var n = vals.length;
+  var X = function(i){ return padX + (W - padX - 8) * i / (n - 1); };
+  var Y = function(v){ return padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo)); };
+  var up = vals[n - 1] >= initCap;
+  var col = up ? "#26a69a" : "#ef5350";
+  var pts = "", area = "M" + X(0).toFixed(1) + "," + (H - padB);
+  for (i = 0; i < n; i++){
+    pts += (i ? " " : "") + X(i).toFixed(1) + "," + Y(vals[i]).toFixed(1);
+    area += " L" + X(i).toFixed(1) + "," + Y(vals[i]).toFixed(1);
+  }
+  area += " L" + X(n - 1).toFixed(1) + "," + (H - padB) + " Z";
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;">';
+  s += '<line x1="' + padX + '" y1="' + Y(initCap).toFixed(1) + '" x2="' + (W - 8) + '" y2="' + Y(initCap).toFixed(1) + '" stroke="#2a2e39" stroke-width="1" stroke-dasharray="3,3"/>';
+  s += '<text x="2" y="' + (Y(initCap) + 3).toFixed(1) + '" font-size="9" fill="#787b86">100</text>';
+  s += '<path d="' + area + '" fill="' + col + '" opacity=".08"/>';
+  s += '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="1.8"/>';
+  s += '<text x="2" y="' + (Y(hi) + 8).toFixed(1) + '" font-size="9" fill="#787b86">' + fmt(hi, 0) + '</text>';
+  s += '<text x="2" y="' + (Y(lo) - 2).toFixed(1) + '" font-size="9" fill="#787b86">' + fmt(lo, 0) + '</text>';
+  s += '<text x="' + padX + '" y="' + (H - 6) + '" font-size="9" fill="#787b86">' + bjShort(curve[0][0]) + '</text>';
+  s += '<text x="' + (W - 8) + '" y="' + (H - 6) + '" font-size="9" fill="#787b86" text-anchor="end">' + bjShort(curve[n - 1][0]) + '</text>';
+  s += '<text x="' + (W - 8) + '" y="11" font-size="10" fill="' + col + '" text-anchor="end">' + sgn(vals[n - 1] - initCap, 2) + ' U (' + sgn(100 * (vals[n - 1] / initCap - 1), 1) + '%)</text>';
+  s += '</svg>';
+  return s;
+}
+function svgTradeBars(trades){
+  if (!trades || !trades.length) return '<div class="mut" style="font-size:12px; padding:20px 0; text-align:center;">还没有已平仓的交易</div>';
+  var W = 560, H = 190, padX = 34, padT = 14, padB = 22;
+  var mx = 0, i;
+  for (i = 0; i < trades.length; i++) mx = Math.max(mx, Math.abs(trades[i].pct));
+  if (mx <= 0) mx = 1;
+  var n = trades.length;
+  var bw = Math.min(34, (W - padX - 8) / n - 4);
+  var Y = function(v){ return padT + (H - padT - padB) * (1 - (v + mx) / (2 * mx)); };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;">';
+  s += '<line x1="' + padX + '" y1="' + Y(0).toFixed(1) + '" x2="' + (W - 8) + '" y2="' + Y(0).toFixed(1) + '" stroke="#2a2e39" stroke-width="1"/>';
+  for (i = 0; i < n; i++){
+    var t = trades[i];
+    var x = padX + (W - padX - 8) * (i + 0.5) / n - bw / 2;
+    var col = t.pnl >= 0 ? "#26a69a" : "#ef5350";
+    var y0 = Y(Math.max(0, t.pct)), y1 = Y(Math.min(0, t.pct));
+    s += '<rect x="' + x.toFixed(1) + '" y="' + y0.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(2, y1 - y0).toFixed(1) + '" fill="' + col + '" rx="2"><title>' + (t.dir === 1 ? "多" : "空") + ' ' + bjShort(t.inTs) + ' → ' + bjShort(t.outTs) + ' : ' + sgn(t.pct, 2) + '%</title></rect>';
+  }
+  s += '<text x="2" y="' + (Y(mx) + 8).toFixed(1) + '" font-size="9" fill="#787b86">+' + fmt(mx, 0) + '%</text>';
+  s += '<text x="2" y="' + (Y(-mx) - 2).toFixed(1) + '" font-size="9" fill="#787b86">-' + fmt(mx, 0) + '%</text>';
+  s += '<text x="' + padX + '" y="' + (H - 6) + '" font-size="9" fill="#787b86">共 ' + n + ' 笔</text>';
+  s += '</svg>';
+  return s;
+}
+
+function render(){
+  var elS = document.getElementById("summary"), elC = document.getElementById("chips");
+  if (!eqData){ elS.textContent = "云端数据还没生成（等引擎首次推送 _bot/equity.json）"; return; }
+  var st = eqData.stats || {}, pos = eqData.position;
+  var dirTxt = pos ? (pos.dir === 1 ? '<span class="up bigdir">● 多头</span>' : '<span class="dn bigdir">● 空头</span>') : '<span class="mut bigdir">○ 空仓</span>';
+  var sinceTxt = pos ? ("自 " + bj(pos.sinceCloseTs) + "（北京时间）") : "";
+  var entryTxt = pos ? ("入场 " + fmt(pos.entryPx)) : "";
+  elS.innerHTML = dirTxt + ' <span class="mut">' + sinceTxt + (entryTxt ? ' · ' + entryTxt : '') + '</span>'
+    + (livePx ? ' · <span class="mut">现价</span> <b>' + fmt(livePx) + '</b>' : '');
+  var liveUp = null;
+  if (pos && livePx) liveUp = pos.dir * (livePx / pos.entryPx - 1) * 100;
+  var h = '';
+  h += chip("权益", fmt(st.eq) + " U");
+  h += chip("总收益", sgn(st.retPct, 2) + "%", st.retPct >= 0 ? "up" : "dn");
+  h += chip("已实现", sgn(st.realized, 2) + " U", st.realized >= 0 ? "up" : "dn");
+  h += chip("浮动(引擎)", (pos ? sgn(pos.upl, 2) + " U" : "—"), pos && pos.upl >= 0 ? "up" : "dn");
+  if (liveUp !== null) h += chip("浮动(实时)", sgn(liveUp, 2) + "%", liveUp >= 0 ? "up" : "dn");
+  h += chip("笔数", (st.trades || 0) + " 笔");
+  h += chip("胜率", (st.winRate || 0) + "%");
+  h += chip("最大回撤", "-" + fmt(st.maxDDPct, 1) + "%", "am");
+  h += chip("数据时间", bj(Date.parse(eqData.generatedAt)), "mut");
+  elC.innerHTML = h;
+  document.getElementById("eqTitle").textContent = "权益曲线（含浮动, " + fmt(st.initCap || 100, 0) + "U 基准）";
+  document.getElementById("eqLine").innerHTML = svgEqLine(eqData.curve, st.initCap || 100);
+  document.getElementById("tradeBars").innerHTML = svgTradeBars(eqData.trades);
+  var tb = document.querySelector("#tradeT tbody");
+  var rows = "";
+  var ts = (eqData.trades || []).slice().reverse();
+  for (var i = 0; i < ts.length; i++){
+    var t = ts[i];
+    rows += '<tr><td class="mut">' + (ts.length - i) + '</td>'
+      + '<td style="text-align:right;"><span class="tag ' + (t.dir === 1 ? "long" : "short") + '">' + (t.dir === 1 ? "多" : "空") + '</span></td>'
+      + '<td class="mut">' + bj(t.inTs) + '</td><td>' + fmt(t.inPx) + '</td>'
+      + '<td class="mut">' + bj(t.outTs) + '</td><td>' + fmt(t.outPx) + '</td>'
+      + '<td class="' + (t.pnl >= 0 ? "up" : "dn") + '">' + sgn(t.pct, 2) + '%</td>'
+      + '<td class="' + (t.pnl >= 0 ? "up" : "dn") + '">' + sgn(t.pnl, 2) + '</td>'
+      + '<td>' + fmt(t.eq, 1) + '</td></tr>';
+  }
+  if (pos){
+    var lp = livePx ? fmt(livePx) : fmt(pos.markPx);
+    var lv = liveUp;
+    rows += '<tr style="background:#1a2430;"><td class="mut">持仓中</td>'
+      + '<td style="text-align:right;"><span class="tag ' + (pos.dir === 1 ? "long" : "short") + '">' + (pos.dir === 1 ? "多" : "空") + '</span></td>'
+      + '<td class="mut">' + bj(pos.sinceCloseTs) + '</td><td>' + fmt(pos.entryPx) + '</td>'
+      + '<td class="mut">—</td><td>' + lp + '</td>'
+      + '<td class="' + ((lv !== null ? lv : pos.uplPct) >= 0 ? "up" : "dn") + '">' + (lv !== null ? sgn(lv, 2) + "%" : sgn(pos.uplPct, 2) + "%") + '</td>'
+      + '<td class="' + (pos.upl >= 0 ? "up" : "dn") + '">' + sgn(pos.upl, 2) + '</td>'
+      + '<td class="mut">—</td></tr>';
+  }
+  tb.innerHTML = rows || '<tr><td colspan="9" class="mut" style="text-align:center; padding:16px 0;">窗口内还没有已平仓交易</td></tr>';
+}
+function sync(){
+  document.getElementById("sync").textContent = " 同步中…";
+  loadEq().then(function(d){
+    eqData = d;
+    render();
+    document.getElementById("sync").textContent = " 已更新 " + bj(Date.now());
+  }).catch(function(e){
+    document.getElementById("sync").textContent = " 拉取失败：" + (e && e.message ? e.message : e) + "（稍后自动重试）";
+  });
+}
+sync();
+loadPx().then(render);
+setInterval(sync, 180000);
+setInterval(function(){ loadPx().then(render); }, 60000);
+</script>
+</body>
+</html>

@@ -196,10 +196,10 @@ function render(){
   document.getElementById("tradeBars").innerHTML = svgTradeBars(eqData.trades);
   var tb = document.querySelector("#tradeT tbody");
   var rows = "";
-  var ts = (eqData.trades || []).slice().reverse();
+  var ts = eqData.trades || [];
   for (var i = 0; i < ts.length; i++){
     var t = ts[i];
-    rows += '<tr><td class="mut">' + (ts.length - i) + '</td>'
+    rows += '<tr><td class="mut">' + (i + 1) + '</td>'
       + '<td style="text-align:right;"><span class="tag ' + (t.dir === 1 ? "long" : "short") + '">' + (t.dir === 1 ? "多" : "空") + '</span></td>'
       + '<td class="mut">' + bj(t.inTs) + '</td><td>' + fmt(t.inPx) + '</td>'
       + '<td class="mut">' + bj(t.outTs) + '</td><td>' + fmt(t.outPx) + '</td>'

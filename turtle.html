@@ -57,6 +57,9 @@
     ② <b>教科书式过拟合实证</b>：训练窗 Calmar 最优的参数（90/15、55/10），样本外只有 +7~13%/年，<b>全部劣于没调过的默认 55/20</b>——在训练窗挑参数是陷阱，参数不动；<br>
     ③ <b>现实预期按样本外校准：SOL 海龟 ≈ +40%/年 / DD39%</b>（全期 65% 由 2021-23 大行情贡献，已非现状）。另：盘中触发（15m 精度）会把默认参数样本外打成 −17%——<b>海龟必须日线收盘确认执行</b>，勿用盘中警报。
   </div>
+  <h2 style="margin-top:14px;">⏱ 周期考试：1h / 4h / 12h / 日线（同为收盘确认口径）</h2>
+  <table id="tfT"><thead><tr><th>周期</th><th>5年总</th><th>笔数</th><th>平均持仓</th><th>训练3y</th><th>样本外2y</th><th>判定</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:6px;">同一策略（55/20根K线、2ATR锁定止损、SMA200闸门）移植到各周期的<b>收盘确认</b>版：信号与止损只在K线收盘判定、全部次K线开盘成交（完全可执行口径）。结论：<b>周期越长边缘越硬</b>——1h 759笔被费率和鞭打绞死（−18%），4h 勉强（+33%但样本外仅+14%），<b>只有日线样本外依然坚挺（+28%/DD47%）</b>。海龟就该跑日线，不换周期。</div>
 </div>
 
 <div class="card">
@@ -162,6 +165,20 @@
     er += "<tr" + (e2 === 0 ? " style='background:#1a2430;'" : "") + "><td>" + EX[e2][0] + "</td><td class='" + cls0 + "'>" + EX[e2][1] + "</td><td class='" + cls1 + "'><b>" + EX[e2][2] + "</b></td><td>" + EX[e2][3] + "</td></tr>";
   }
   etb.innerHTML = er;
+
+  // timeframe exam card
+  var TF = [
+    ["1小时线", "-18%", "759", "~1天", "-12% / DD61%", "-26% / DD72%", "❌ 费率绞死"],
+    ["4小时线", "+33%", "181", "~5天", "+48% / DD57%", "+14% / DD41%", "➖ 样本外勉强"],
+    ["12小时线", "+20%", "56", "~15天", "+51% / DD57%", "-12% / DD64%", "❌ 样本外翻负"],
+    ["日线(现役)", "+39%", "25", "~29天", "+49% / DD49%", "+28% / DD47%", "✅ 唯一坚挺"]
+  ];
+  var tfb = document.querySelector("#tfT tbody"), tfr = "";
+  for (var tf = 0; tf < TF.length; tf++) {
+    var T4 = TF[tf];
+    tfr += "<tr" + (tf === 3 ? " style='background:#1a2430;'" : "") + "><td>" + T4[0] + "</td><td class='" + (T4[1].charAt(0) === "+" ? "up" : "dn") + "'>" + T4[1] + "</td><td>" + T4[2] + "</td><td>" + T4[3] + "</td><td class='" + (T4[4].charAt(0) === "+" ? "up" : "dn") + "'>" + T4[4] + "</td><td class='" + (T4[5].charAt(0) === "+" ? "up" : "dn") + "'><b>" + T4[5] + "</b></td><td>" + T4[6] + "</td></tr>";
+  }
+  tfb.innerHTML = tfr;
 
   document.getElementById("tn").textContent = TDATA.trades.length;
   var tt = document.querySelector("#tradeT tbody"), tr = "";

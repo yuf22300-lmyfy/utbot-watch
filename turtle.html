@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#131722">
+<title>海龟V2 测试器 · ETH</title>
+<style>
+  :root{ --bg:#131722; --panel:#1e222d; --border:#2a2e39; --text:#d1d4dc; --muted:#787b86;
+    --blue:#2962ff; --green:#26a69a; --red:#ef5350; --amber:#ffb74d; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--text); font:14px/1.7 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif; padding:16px; max-width:1000px; margin:0 auto;}
+  h1{font-size:18px; color:#fff; margin-bottom:2px;}
+  .sub{color:var(--muted); font-size:12px; margin-bottom:12px;}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px;}
+  .card h2{font-size:14px; margin-bottom:10px; color:#fff;}
+  table{width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums;}
+  th{color:var(--muted); font-weight:500; text-align:right; padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap;}
+  td{padding:7px 8px; border-bottom:1px solid #22262f; text-align:right; white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left;}
+  .up{color:var(--green);} .dn{color:var(--red);} .mut{color:var(--muted);} .am{color:var(--amber);}
+  .tag{display:inline-block; padding:1px 8px; border-radius:4px; font-size:11px;}
+  .tag.long{background:rgba(38,166,154,.15); color:var(--green);}
+  .tag.short{background:rgba(239,83,80,.15); color:var(--red);}
+  .note{color:var(--muted); font-size:12px; line-height:1.8;}
+  .note b{color:var(--text);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px;}
+  .chip{border-radius:8px; padding:5px 12px; font-size:12px; color:var(--muted); background:#131722; border:1px solid var(--border);}
+  .chip b{font-size:15px; margin-left:4px; color:var(--text);}
+  #tradeT tbody tr:hover{background:#232836;}
+  @media (max-width:600px){ body{padding:10px 10px 24px; font-size:13px;} .card{padding:10px 12px;} table{font-size:12px;} .card{overflow-x:auto;} }
+</style>
+</head>
+<body>
+<h1>🐢 海龟V2 策略测试器 <span style="font-size:11px; color:#787b86; font-weight:400;">优化版(海龟 + 20% LOWVOL袖仓)</span></h1>
+<div class="sub" id="subLine">ETH 日线 · Donchian 55/20 入场 · 2×ATR 初始止损(入场锁定) · SMA200 方向闸门 · 多空双向 · 0.1%手续费/边 · 100U 复利 1x</div>
+
+<div class="card" style="border-color:#ffb74d;">
+  <h2>📊 核心指标 <span class="mut" style="font-size:11px; font-weight:400;" id="win"></span></h2>
+  <div class="chips" id="chips"></div>
+  <div class="note" style="margin-top:8px;" id="verdict"></div>
+</div>
+
+<div class="card">
+  <h2>⚔️ 三个版本对比（同一引擎 · 同一窗口）</h2>
+  <table id="cmpT"><thead><tr><th>版本</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>交易笔数</th><th>判定</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:8px;">
+    <b>结论（已修正）：</b>在干净的重算引擎上，20% LOWVOL 袖仓对海龟<b>不加分</b>（年化 36.0% → 35.0%，回撤 27.1% → 27.4%）——此前"+363%/回撤52%改善"来自粗近似重放引擎，作废。海龟V2 本体就是它的最优形态。启用条件不变：本金 ≥1000-2000U 时作为独立袖仓（建议 BTC 品种）。
+  </div>
+</div>
+
+<div class="card">
+  <h2>📈 权益曲线（优化版 vs 海龟本体）</h2>
+  <div id="eqLine"></div>
+</div>
+
+<div class="card">
+  <h2>📅 逐年战绩（优化版 80/20）</h2>
+  <table id="yrT"><thead><tr><th>年份</th><th>年度收益</th><th>年内最大回撤</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="card">
+  <h2>📋 交易清单（海龟腿 · 共 <span id="tn"></span> 笔）</h2>
+  <table id="tradeT"><thead><tr><th>#</th><th>方向</th><th>入场日</th><th>入场价</th><th>出场日</th><th>出场价</th><th>盈亏%</th><th>盈亏(U)</th><th>权益</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:10px;">
+    口径说明与诚实边界：<b>①不含资金费</b>（海龟多头占比高，实盘资金费通常为小幅拖累，年化约打 0.5-1.5 折）；②日线引擎，成交按次日收盘价近似、止损按止损价假设成交（15m 级插针实盘会有差异）；③20% 袖仓为低波动轮动（8币选2低波，周度），其调仓约每年 50 笔未计入上表笔数。启用前建议先用 15m 数据复核算力允许时的精确口径。
+  </div>
+</div>
+
+<script src="turtle_data.js"></script>
+<script>
+(function(){
+  var M = TDATA.meta;
+  document.getElementById("win").textContent = "窗口 " + M.start + " → " + M.end + "（" + (M.end.slice(0,4)-M.start.slice(0,4)) + " 年+）";
+  function chip(l, v, c){ return '<div class="chip">' + l + '<b class="' + (c||"") + '">' + v + '</b></div>'; }
+  var h = "";
+  h += chip("年化收益", M.cagr.toFixed(1) + "%/年", M.cagr >= 0 ? "up" : "dn");
+  h += chip("总收益", (M.total >= 0 ? "+" : "") + M.total.toFixed(0) + "%", M.total >= 0 ? "up" : "dn");
+  h += chip("最大回撤", "-" + M.maxDD.toFixed(1) + "%", "am");
+  h += chip("交易笔数", M.trades + " 笔");
+  h += chip("胜率", M.winRate + "%");
+  h += chip("平均持仓", "~73 天/笔", "mut");
+  document.getElementById("chips").innerHTML = h;
+  document.getElementById("verdict").innerHTML = "<b>一句话：</b>海龟V2 本体年化 " + M.turtleAlone.cagr.toFixed(1) + "% / 回撤 " + M.turtleAlone.maxDD.toFixed(0) + "% / " + M.trades + " 笔（五年只做 " + M.trades + " 次决定，每次约 73 天）——典型慢趋势系统，和 UT Bot（年化更快、回撤更深）形成节奏互补。";
+
+  var cmp = [
+    ["海龟V2 本体", M.turtleAlone.cagr, M.turtleAlone.total, M.turtleAlone.maxDD, M.trades, "✅ 最优形态"],
+    ["+ 20% LOWVOL 袖仓", M.cagr, M.total, M.maxDD, M.trades, "➖ 不加分(已修正)"],
+    ["LOWVOL 袖仓单独", 12.2, M.sleeveAlone.total, M.sleeveAlone.maxDD, "~250(周调)", "❌ 弱引擎"]
+  ];
+  var tb = document.querySelector("#cmpT tbody"), rows = "";
+  for (var i = 0; i < cmp.length; i++) {
+    var r = cmp[i];
+    rows += "<tr><td>" + r[0] + "</td><td class='" + (r[1] >= 0 ? "up" : "dn") + "'>" + r[1].toFixed(1) + "%</td><td class='" + (r[2] >= 0 ? "up" : "dn") + "'>" + (r[2] >= 0 ? "+" : "") + r[2].toFixed(0) + "%</td><td class='am'>-" + r[3].toFixed(0) + "%</td><td>" + r[4] + "</td><td>" + r[5] + "</td></tr>";
+  }
+  tb.innerHTML = rows;
+
+  var ytb = document.querySelector("#yrT tbody"), yr = "";
+  for (var y = 0; y < TDATA.yearly.length; y++) {
+    var Y = TDATA.yearly[y];
+    yr += "<tr><td>" + Y.y + (Y.y === "2026" ? " <span class='mut'>(至9月)</span>" : "") + "</td><td class='" + (Y.ret >= 0 ? "up" : "dn") + "'>" + (Y.ret >= 0 ? "+" : "") + Y.ret.toFixed(1) + "%</td><td class='am'>-" + Y.dd.toFixed(1) + "%</td></tr>";
+  }
+  ytb.innerHTML = yr;
+
+  // equity SVG: blend (amber) + turtle (blue)
+  var c1 = TDATA.curve, c2 = TDATA.curveT;
+  var W = 720, H = 240, padX = 46, padT = 14, padB = 24;
+  var mn = 1e9, mx = -1e9, i2;
+  for (i2 = 0; i2 < c1.length; i2++) { if (c1[i2][1] < mn) mn = c1[i2][1]; if (c1[i2][1] > mx) mx = c1[i2][1]; }
+  var n = c1.length;
+  var X = function (i) { return padX + (W - padX - 10) * i / (n - 1); };
+  var Y = function (v) { return padT + (H - padT - padB) * (1 - (v - mn) / (mx - mn)); };
+  var p1 = "", p2 = "";
+  for (i2 = 0; i2 < n; i2++) { p1 += (i2 ? " " : "") + X(i2).toFixed(1) + "," + Y(c1[i2][1]).toFixed(1); p2 += (i2 ? " " : "") + X(i2).toFixed(1) + "," + Y(c2[i2][1]).toFixed(1); }
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto; display:block;">';
+  s += '<line x1="' + padX + '" y1="' + Y(100).toFixed(1) + '" x2="' + (W - 10) + '" y2="' + Y(100).toFixed(1) + '" stroke="#2a2e39" stroke-width="1" stroke-dasharray="3,3"/>';
+  s += '<text x="2" y="' + (Y(100) + 3).toFixed(1) + '" font-size="9" fill="#787b86">100</text>';
+  s += '<polyline points="' + p2 + '" fill="none" stroke="#2962ff" stroke-width="1.4" opacity=".8"/>';
+  s += '<polyline points="' + p1 + '" fill="none" stroke="#ffb74d" stroke-width="1.8"/>';
+  s += '<text x="' + padX + '" y="' + (H - 6) + '" font-size="9" fill="#787b86">' + c1[0][0] + '</text>';
+  s += '<text x="' + (W - 10) + '" y="' + (H - 6) + '" font-size="9" fill="#787b86" text-anchor="end">' + c1[n - 1][0] + '</text>';
+  s += '<text x="' + (W - 10) + '" y="11" font-size="10" fill="#ffb74d" text-anchor="end">优化版 ' + (TDATA.meta.total >= 0 ? "+" : "") + TDATA.meta.total.toFixed(0) + "%</text>";
+  s += '<text x="' + (W - 10) + '" y="24" font-size="10" fill="#2962ff" text-anchor="end">海龟本体 ' + (TDATA.meta.turtleAlone.total >= 0 ? "+" : "") + TDATA.meta.turtleAlone.total.toFixed(0) + "%</text>";
+  s += '</svg>';
+  document.getElementById("eqLine").innerHTML = s;
+
+  document.getElementById("tn").textContent = TDATA.trades.length;
+  var tt = document.querySelector("#tradeT tbody"), tr = "";
+  for (var t = TDATA.trades.length - 1; t >= 0; t--) {
+    var T = TDATA.trades[t];
+    tr += "<tr><td class='mut'>" + (t + 1) + "</td><td style='text-align:right;'><span class='tag " + (T.d === 1 ? "long" : "short") + "'>" + (T.d === 1 ? "多" : "空") + "</span></td><td class='mut'>" + T.inD + "</td><td>" + T.inPx.toFixed(2) + "</td><td class='mut'>" + T.outD + "</td><td>" + T.outPx.toFixed(2) + "</td><td class='" + (T.pnl >= 0 ? "up" : "dn") + "'>" + (T.pct >= 0 ? "+" : "") + T.pct.toFixed(1) + "%</td><td class='" + (T.pnl >= 0 ? "up" : "dn") + "'>" + (T.pnl >= 0 ? "+" : "") + T.pnl.toFixed(1) + "</td><td>" + T.eq.toFixed(0) + "</td></tr>";
+  }
+  tt.innerHTML = tr;
+})();
+</script>
+</body>
+</html>

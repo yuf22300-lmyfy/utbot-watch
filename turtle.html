@@ -42,6 +42,13 @@
 </div>
 
 <div class="card">
+  <h2>🪙 8大币种版（同一引擎 · 同一五年窗口）</h2>
+  <table id="c8T"><thead><tr><th>币种</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>笔数</th><th>胜率</th><th>判定</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:6px;">等权组合（8币各1/8，日再平衡）：<b id="pfLine"></b>。分散把单币灾难（LINK −40%/DD75、DOGE +21%/DD81）稀释掉，但<strong>组合年化 27.5% 低于 ETH 单币 36.0%</strong>——海龟的alpha集中在高波动趋势币，摊到8币等于主动稀释。若启用海龟：选 ETH 或 SOL 型趋势币做袖仓，而非8币全家桶。</div>
+  <div style="margin-top:10px;" id="eq8"></div>
+</div>
+
+<div class="card">
   <h2>⚔️ 三个版本对比（同一引擎 · 同一窗口）</h2>
   <table id="cmpT"><thead><tr><th>版本</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>交易笔数</th><th>判定</th></tr></thead><tbody></tbody></table>
   <div class="note" style="margin-top:8px;">
@@ -68,6 +75,7 @@
 </div>
 
 <script src="turtle_data.js"></script>
+<script src="turtle_data8.js"></script>
 <script>
 (function(){
   var M = TDATA.meta;
@@ -131,6 +139,37 @@
     tr += "<tr><td class='mut'>" + (t + 1) + "</td><td style='text-align:right;'><span class='tag " + (T.d === 1 ? "long" : "short") + "'>" + (T.d === 1 ? "多" : "空") + "</span></td><td class='mut'>" + T.inD + "</td><td>" + T.inPx.toFixed(2) + "</td><td class='mut'>" + T.outD + "</td><td>" + T.outPx.toFixed(2) + "</td><td class='" + (T.pnl >= 0 ? "up" : "dn") + "'>" + (T.pct >= 0 ? "+" : "") + T.pct.toFixed(1) + "%</td><td class='" + (T.pnl >= 0 ? "up" : "dn") + "'>" + (T.pnl >= 0 ? "+" : "") + T.pnl.toFixed(1) + "</td><td>" + T.eq.toFixed(0) + "</td></tr>";
   }
   tt.innerHTML = tr;
+
+  // 8-coin card
+  if (typeof TDATA8 !== "undefined") {
+    var c8 = document.querySelector("#c8T tbody"), r8 = "";
+    for (var i8 = 0; i8 < TDATA8.coins.length; i8++) {
+      var C = TDATA8.coins[i8];
+      var verdict = C.cagr >= 30 ? "✅ 强" : (C.cagr >= 15 ? "➖ 中" : "❌ 弱");
+      r8 += "<tr><td>" + C.coin + (C.coin === "ETH" ? " <span class='mut'>(基准)</span>" : "") + "</td><td class='" + (C.cagr >= 0 ? "up" : "dn") + "'>" + C.cagr.toFixed(1) + "%</td><td class='" + (C.total >= 0 ? "up" : "dn") + "'>" + (C.total >= 0 ? "+" : "") + C.total.toFixed(0) + "%</td><td class='am'>-" + C.maxDD.toFixed(0) + "%</td><td>" + C.trades + "</td><td>" + C.wr + "%</td><td>" + verdict + "</td></tr>";
+    }
+    var P8 = TDATA8.portfolio;
+    r8 += "<tr style='background:#1a2430;'><td><b>等权组合×8</b></td><td class='up'><b>" + P8.cagr.toFixed(1) + "%</b></td><td class='up'><b>+" + P8.total.toFixed(0) + "%</b></td><td class='am'><b>-" + P8.maxDD.toFixed(0) + "%</b></td><td><b>" + P8.trades + "</b></td><td>—</td><td>分散但稀释</td></tr>";
+    c8.innerHTML = r8;
+    document.getElementById("pfLine").innerHTML = "<b class='up'>年化 " + P8.cagr.toFixed(1) + "%</b> / 总收益 +" + P8.total.toFixed(0) + "% / 回撤 −" + P8.maxDD.toFixed(0) + "%（" + P8.trades + " 笔总和）";
+    var cv = TDATA8.curve;
+    var W8 = 720, H8 = 200, pX = 46, pT = 14, pB = 22;
+    var mn8 = 1e9, mx8 = -1e9;
+    for (var q8 = 0; q8 < cv.length; q8++) { if (cv[q8][1] < mn8) mn8 = cv[q8][1]; if (cv[q8][1] > mx8) mx8 = cv[q8][1]; }
+    var n8 = cv.length;
+    var X8 = function (i) { return pX + (W8 - pX - 10) * i / (n8 - 1); };
+    var Y8 = function (v) { return pT + (H8 - pT - pB) * (1 - (v - mn8) / (mx8 - mn8)); };
+    var pp = "";
+    for (var q9 = 0; q9 < n8; q9++) pp += (q9 ? " " : "") + X8(q9).toFixed(1) + "," + Y8(cv[q9][1]).toFixed(1);
+    var s8 = '<svg viewBox="0 0 ' + W8 + ' ' + H8 + '" style="width:100%; height:auto; display:block;">';
+    s8 += '<line x1="' + pX + '" y1="' + Y8(100).toFixed(1) + '" x2="' + (W8 - 10) + '" y2="' + Y8(100).toFixed(1) + '" stroke="#2a2e39" stroke-width="1" stroke-dasharray="3,3"/>';
+    s8 += '<polyline points="' + pp + '" fill="none" stroke="#26a69a" stroke-width="1.8"/>';
+    s8 += '<text x="' + pX + '" y="' + (H8 - 6) + '" font-size="9" fill="#787b86">' + cv[0][0] + '</text>';
+    s8 += '<text x="' + (W8 - 10) + '" y="' + (H8 - 6) + '" font-size="9" fill="#787b86" text-anchor="end">' + cv[n8 - 1][0] + '</text>';
+    s8 += '<text x="' + (W8 - 10) + '" y="11" font-size="10" fill="#26a69a" text-anchor="end">8币等权 +' + P8.total.toFixed(0) + '%</text>';
+    s8 += '</svg>';
+    document.getElementById("eq8").innerHTML = s8;
+  }
 })();
 </script>
 </body>

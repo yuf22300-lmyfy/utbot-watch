@@ -48,6 +48,17 @@
   <div style="margin-top:10px;" id="eq8"></div>
 </div>
 
+<div class="card" style="border-color:#26a69a;">
+  <h2>🎓 3年训练 + 2年样本外考试（SOL · 日线口径）</h2>
+  <table id="examT"><thead><tr><th>参数(入场/出场/止损/闸门)</th><th>训练 21-09→24-09</th><th>样本外 24-09→26-09</th><th>结论</th></tr></thead><tbody></tbody></table>
+  <div class="note" style="margin-top:8px;">
+    <b>三条考试结论：</b><br>
+    ① <b>默认参数通过考试</b>——样本外 +40%/年（训练段 +83% 的一半，衰减正常），回撤 39% 可控；<br>
+    ② <b>教科书式过拟合实证</b>：训练窗 Calmar 最优的参数（90/15、55/10），样本外只有 +7~13%/年，<b>全部劣于没调过的默认 55/20</b>——在训练窗挑参数是陷阱，参数不动；<br>
+    ③ <b>现实预期按样本外校准：SOL 海龟 ≈ +40%/年 / DD39%</b>（全期 65% 由 2021-23 大行情贡献，已非现状）。另：盘中触发（15m 精度）会把默认参数样本外打成 −17%——<b>海龟必须日线收盘确认执行</b>，勿用盘中警报。
+  </div>
+</div>
+
 <div class="card">
   <h2>⚔️ 三个版本对比（同一引擎 · 同一窗口）</h2>
   <table id="cmpT"><thead><tr><th>版本</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>交易笔数</th><th>判定</th></tr></thead><tbody></tbody></table>
@@ -136,6 +147,21 @@
   s += '<text x="' + (W - 10) + '" y="24" font-size="10" fill="#2962ff" text-anchor="end">海龟本体 ' + (TDATA.meta.turtleAlone.total >= 0 ? "+" : "") + TDATA.meta.turtleAlone.total.toFixed(0) + "%</text>";
   s += '</svg>';
   document.getElementById("eqLine").innerHTML = s;
+
+  // exam card
+  var EX = [
+    ["默认 55/20/2ATR/闸", "+83% / DD32", "+40% / DD39", "✅ 通过"],
+    ["55/20/3ATR/闸", "+66% / DD38", "+44% / DD36", "➖ 略优(样本内挑的,无统计依据)"],
+    ["40/20/2ATR/闸", "+68% / DD41", "+41% / DD39", "➖ 与默认同级"],
+    ["训练窗最优 90/15/2ATR/闸", "+94% / DD25", "+13% / DD38", "⚠️ 过拟合陷阱"],
+    ["训练窗次优 55/10/2ATR", "+114% / DD33", "+7% / DD49", "⚠️ 过拟合陷阱"]
+  ];
+  var etb = document.querySelector("#examT tbody"), er = "";
+  for (var e2 = 0; e2 < EX.length; e2++) {
+    var cls0 = EX[e2][1].charAt(0) === "+" ? "up" : "dn", cls1 = EX[e2][2].charAt(0) === "+" ? "up" : "dn";
+    er += "<tr" + (e2 === 0 ? " style='background:#1a2430;'" : "") + "><td>" + EX[e2][0] + "</td><td class='" + cls0 + "'>" + EX[e2][1] + "</td><td class='" + cls1 + "'><b>" + EX[e2][2] + "</b></td><td>" + EX[e2][3] + "</td></tr>";
+  }
+  etb.innerHTML = er;
 
   document.getElementById("tn").textContent = TDATA.trades.length;
   var tt = document.querySelector("#tradeT tbody"), tr = "";

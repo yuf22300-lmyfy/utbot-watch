@@ -66,33 +66,60 @@ function ols(X, y) { // returns {b, tstats, rss, n, p}
   return { b: b, t: t, rss: rss, n: n, p: p };
 }
 // ---------- ADF ----------
-// spec: "c" (constant) or "ct" (constant+trend). gamma index: with k lags,
-// columns = [const, (trend), y_{t-1}, d1..dk]; gammaIdx = (spec==="ct") ? 2 : 1.
-function adf(series, spec) {
+function adfFixed(series, spec, k) { // returns {tau, rss, n, p} for given lag k
   var T = series.length;
+  var X = [], y = [];
+  var start = 1 + k;
+  for (var t = start; t < T; t++) {
+    var row = [];
+    row.push(1);
+    if (spec === "ct") row.push(t);
+    row.push(series[t - 1]);
+    for (var l = 1; l <= k; l++) row.push(series[t - l] - series[t - l - 1]);
+    X.push(row);
+    y.push(series[t] - series[t - 1]);
+  }
+  var res = ols(X, y);
+  if (res === null) return null;
+  var gammaIdx = (spec === "ct") ? 2 : 1;
+  return { tau: res.t[gammaIdx], gamma: res.b[gammaIdx], aic: res.n * Math.log(res.rss / res.n) + 2 * res.p, n: res.n };
+}
+function adf(series, spec) {
   var best = null;
   for (var k = 0; k <= 8; k++) {
-    var X = [], y = [];
-    var start = 1 + k; // need y_{t-1} and k diffs
-    for (var t = start; t < T; t++) {
-      var row = [];
-      row.push(1);
-      if (spec === "ct") row.push(t);
-      row.push(series[t - 1]);
-      for (var l = 1; l <= k; l++) row.push(series[t - l] - series[t - l - 1]);
-      X.push(row);
-      y.push(series[t] - series[t - 1]);
-    }
-    var res = ols(X, y);
-    if (res === null) continue;
-    var aic = res.n * Math.log(res.rss / res.n) + 2 * res.p;
-    if (best === null || aic < best.aic) best = { aic: aic, k: k, res: res };
+    var r = adfFixed(series, spec, k);
+    if (r === null) continue;
+    if (best === null || r.aic < best.aic) best = { aic: r.aic, k: k, tau: r.tau, gamma: r.gamma, n: r.n };
   }
-  var gammaIdx = (spec === "ct") ? 2 : 1;
-  var tau = best.res.t[gammaIdx];
-  var gamma = best.res.b[gammaIdx];
-  var hl = (gamma < 0 && gamma > -2) ? Math.log(0.5) / Math.log(1 + gamma) : NaN;
-  return { tau: tau, k: best.k, n: best.res.n, halfLife: hl, gamma: gamma };
+  var hl = (best.gamma < 0 && best.gamma > -2) ? Math.log(0.5) / Math.log(1 + best.gamma) : NaN;
+  return { tau: best.tau, k: best.k, n: best.n, halfLife: hl, gamma: best.gamma };
+}
+// ---------- Monte Carlo p-value under H0 (unit root) ----------
+function randn() {
+  var u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function mcAdf(T, spec, k, sims) { // simulate RW-with-drift of length T, ADF spec, k lags
+  var taus = [];
+  for (var s = 0; s < sims; s++) {
+    var y = new Array(T), v = 0.0;
+    y[0] = 0;
+    for (var t = 1; t < T; t++) { v += randn(); y[t] = v; }
+    var r = adfFixed(y, spec, k);
+    if (r !== null) taus.push(r.tau);
+  }
+  taus.sort(function (a, b) { return a - b; });
+  return { taus: taus };
+}
+function mcPvalue(tauObs, T, spec, k, sims) {
+  var mc = mcAdf(T, spec, k, sims);
+  var n = mc.taus.length, cnt = 0;
+  for (var i = 0; i < n; i++) if (mc.taus[i] <= tauObs) cnt++;
+  var q05 = mc.taus[Math.floor(0.05 * n)];
+  var q01 = mc.taus[Math.floor(0.01 * n)];
+  return { p: cnt / n, q05: q05, q01: q01, n: n };
 }
 var CV = {
   c: { "1%": -3.43, "5%": -2.86, "10%": -2.57 },
@@ -105,17 +132,19 @@ function verdict(tau, cv) {
   return "CANNOT-reject (unit root)";
 }
 function report(name, eqSeries) {
-  // eqSeries: array of equity (ascending dates), starting >= warmup
   var rets = [];
   for (var i = 1; i < eqSeries.length; i++) rets.push(Math.log(eqSeries[i] / eqSeries[i - 1]));
   var logs = [];
   for (i = 0; i < eqSeries.length; i++) logs.push(Math.log(eqSeries[i]));
   var a1 = adf(rets, "c");
   var a2 = adf(logs, "ct");
+  var mc1 = mcPvalue(a1.tau, rets.length, "c", a1.k, 2000);
+  var mc2 = mcPvalue(a2.tau, logs.length, "ct", a2.k, 5000);
   WScript.Echo("[" + name + "] T=" + eqSeries.length);
-  WScript.Echo("  daily-returns ADF(const): tau=" + a1.tau.toFixed(2) + " k=" + a1.k + " -> " + verdict(a1.tau, CV.c));
-  WScript.Echo("  log-equity   ADF(c+t):  tau=" + a2.tau.toFixed(2) + " k=" + a2.k + " -> " + verdict(a2.tau, CV.ct) +
-    (isNaN(a2.halfLife) ? "" : " | dev-from-trend half-life ~" + a2.halfLife.toFixed(0) + "d"));
+  WScript.Echo("  daily-returns ADF(const): tau=" + a1.tau.toFixed(2) + " k=" + a1.k + " MC-p=" + mc1.p.toFixed(4) + " (" + mc1.n + " sims)");
+  WScript.Echo("  log-equity   ADF(c+t):  tau=" + a2.tau.toFixed(2) + " k=" + a2.k + " MC-p=" + mc2.p.toFixed(4) +
+    " [MC 5%cv=" + mc2.q05.toFixed(2) + " 1%cv=" + mc2.q01.toFixed(2) + " vs table -3.41/-3.96]" +
+    (isNaN(a2.halfLife) ? "" : " | HL~" + a2.halfLife.toFixed(0) + "d"));
 }
 
 // ---------- data loaders ----------

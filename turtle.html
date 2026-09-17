@@ -44,16 +44,14 @@
 <div class="card">
   <h2>🪙 8大币种版（同一引擎 · 同一五年窗口）</h2>
   <table id="c8T"><thead><tr><th>币种</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>笔数</th><th>胜率</th><th>判定</th></tr></thead><tbody></tbody></table>
-  <div class="note" style="margin-top:6px;">等权组合（8币各1/8，日再平衡）：<b id="pfLine"></b>。分散把单币灾难（LINK −40%/DD75、DOGE +21%/DD81）稀释掉，但<strong>组合年化 27.5% 低于 ETH 单币 36.0%</strong>——海龟的alpha集中在高波动趋势币，摊到8币等于主动稀释。若启用海龟：选 ETH 或 SOL 型趋势币做袖仓，而非8币全家桶。</div>
+  <div class="note" style="margin-top:6px;">等权组合（8币各1/8，日再平衡）：<b id="pfLine"></b>。分散把单币灾难（LINK −40%/DD75、DOGE +21%/DD81）稀释掉，但组合年化 27.5% 远低于基准 SOL 单币 65.3%——海龟的alpha集中在高波动趋势币，摊到8币等于主动稀释。袖仓就选 SOL / ETH 型趋势币，勿用8币全家桶。</div>
   <div style="margin-top:10px;" id="eq8"></div>
 </div>
 
 <div class="card">
   <h2>⚔️ 三个版本对比（同一引擎 · 同一窗口）</h2>
   <table id="cmpT"><thead><tr><th>版本</th><th>年化</th><th>总收益</th><th>最大回撤</th><th>交易笔数</th><th>判定</th></tr></thead><tbody></tbody></table>
-  <div class="note" style="margin-top:8px;">
-    <b>结论（已修正）：</b>在干净的重算引擎上，20% LOWVOL 袖仓对海龟<b>不加分</b>（年化 36.0% → 35.0%，回撤 27.1% → 27.4%）——此前"+363%/回撤52%改善"来自粗近似重放引擎，作废。海龟V2 本体就是它的最优形态。启用条件不变：本金 ≥1000-2000U 时作为独立袖仓（建议 BTC 品种）。
-  </div>
+  <div class="note" style="margin-top:8px;" id="cmpNote"></div>
 </div>
 
 <div class="card">
@@ -79,21 +77,27 @@
 <script>
 (function(){
   var M = TDATA.meta;
+  document.getElementById("subLine").textContent = M.inst + " · 多空双向 · 0.1%手续费/边 · 100U 复利 1x";
   document.getElementById("win").textContent = "窗口 " + M.start + " → " + M.end + "（" + (M.end.slice(0,4)-M.start.slice(0,4)) + " 年+）";
   function chip(l, v, c){ return '<div class="chip">' + l + '<b class="' + (c||"") + '">' + v + '</b></div>'; }
+  var holdSum = 0;
+  function iD(s){ return Date.UTC(+s.slice(0,4), +s.slice(5,7)-1, +s.slice(8,10)); }
+  for (var h0 = 0; h0 < TDATA.trades.length; h0++) holdSum += (iD(TDATA.trades[h0].outD) - iD(TDATA.trades[h0].inD)) / 86400000;
+  var avgHold = TDATA.trades.length ? Math.round(holdSum / TDATA.trades.length) : 0;
   var h = "";
   h += chip("年化收益", M.cagr.toFixed(1) + "%/年", M.cagr >= 0 ? "up" : "dn");
   h += chip("总收益", (M.total >= 0 ? "+" : "") + M.total.toFixed(0) + "%", M.total >= 0 ? "up" : "dn");
   h += chip("最大回撤", "-" + M.maxDD.toFixed(1) + "%", "am");
   h += chip("交易笔数", M.trades + " 笔");
   h += chip("胜率", M.winRate + "%");
-  h += chip("平均持仓", "~73 天/笔", "mut");
+  h += chip("平均持仓", "~" + avgHold + " 天/笔", "mut");
   document.getElementById("chips").innerHTML = h;
-  document.getElementById("verdict").innerHTML = "<b>一句话：</b>海龟V2 本体年化 " + M.turtleAlone.cagr.toFixed(1) + "% / 回撤 " + M.turtleAlone.maxDD.toFixed(0) + "% / " + M.trades + " 笔（五年只做 " + M.trades + " 次决定，每次约 73 天）——典型慢趋势系统，和 UT Bot（年化更快、回撤更深）形成节奏互补。";
+  var rrT = M.turtleAlone.cagr / M.turtleAlone.maxDD, rrB = M.cagr / M.maxDD;
+  document.getElementById("verdict").innerHTML = "<b>一句话：</b>基准 " + M.inst.split(" ")[0] + " · 海龟V2 本体年化 " + M.turtleAlone.cagr.toFixed(1) + "% / 回撤 " + M.turtleAlone.maxDD.toFixed(0) + "% / " + M.trades + " 笔（平均一笔拿 " + avgHold + " 天）——典型慢趋势系统。加 20% LOWVOL 袖仓后：年化 " + M.turtleAlone.cagr.toFixed(1) + "→" + M.cagr.toFixed(1) + "%，回撤 " + M.turtleAlone.maxDD.toFixed(0) + "→" + M.maxDD.toFixed(0) + "%，<b>收益/回撤 " + rrT.toFixed(2) + "→" + rrB.toFixed(2) + (rrB > rrT ? "（风险调整后变优）" : "（不加分）") + "</b>。";
 
   var cmp = [
-    ["海龟V2 本体", M.turtleAlone.cagr, M.turtleAlone.total, M.turtleAlone.maxDD, M.trades, "✅ 最优形态"],
-    ["+ 20% LOWVOL 袖仓", M.cagr, M.total, M.maxDD, M.trades, "➖ 不加分(已修正)"],
+    ["海龟V2 本体", M.turtleAlone.cagr, M.turtleAlone.total, M.turtleAlone.maxDD, M.trades, "基准形态"],
+    ["+ 20% LOWVOL 袖仓", M.cagr, M.total, M.maxDD, M.trades, (M.cagr / M.maxDD > M.turtleAlone.cagr / M.turtleAlone.maxDD) ? "✅ 风险调整后更优" : "➖ 不加分"],
     ["LOWVOL 袖仓单独", 12.2, M.sleeveAlone.total, M.sleeveAlone.maxDD, "~250(周调)", "❌ 弱引擎"]
   ];
   var tb = document.querySelector("#cmpT tbody"), rows = "";
@@ -102,6 +106,7 @@
     rows += "<tr><td>" + r[0] + "</td><td class='" + (r[1] >= 0 ? "up" : "dn") + "'>" + r[1].toFixed(1) + "%</td><td class='" + (r[2] >= 0 ? "up" : "dn") + "'>" + (r[2] >= 0 ? "+" : "") + r[2].toFixed(0) + "%</td><td class='am'>-" + r[3].toFixed(0) + "%</td><td>" + r[4] + "</td><td>" + r[5] + "</td></tr>";
   }
   tb.innerHTML = rows;
+  document.getElementById("cmpNote").innerHTML = "<b>说明：</b>干净重算引擎（修正过早期粗近似的误判）。当前基准 " + M.inst.split(" ")[0] + "：加袖仓年化 " + M.turtleAlone.cagr.toFixed(1) + "→" + M.cagr.toFixed(1) + "%、回撤 " + M.turtleAlone.maxDD.toFixed(0) + "→" + M.maxDD.toFixed(0) + "%——<b>" + (M.maxDD < M.turtleAlone.maxDD - 2 ? "回撤改善明显，用 " + (M.turtleAlone.cagr - M.cagr).toFixed(1) + "pp 年化换 " + (M.turtleAlone.maxDD - M.maxDD).toFixed(0) + "pp 回撤" : "对回撤无实质改善") + "</b>，按你对颠簸的容忍度选。启用条件不变：本金 ≥1000-2000U 时作为独立袖仓。";
 
   var ytb = document.querySelector("#yrT tbody"), yr = "";
   for (var y = 0; y < TDATA.yearly.length; y++) {
@@ -146,7 +151,7 @@
     for (var i8 = 0; i8 < TDATA8.coins.length; i8++) {
       var C = TDATA8.coins[i8];
       var verdict = C.cagr >= 30 ? "✅ 强" : (C.cagr >= 15 ? "➖ 中" : "❌ 弱");
-      r8 += "<tr><td>" + C.coin + (C.coin === "ETH" ? " <span class='mut'>(基准)</span>" : "") + "</td><td class='" + (C.cagr >= 0 ? "up" : "dn") + "'>" + C.cagr.toFixed(1) + "%</td><td class='" + (C.total >= 0 ? "up" : "dn") + "'>" + (C.total >= 0 ? "+" : "") + C.total.toFixed(0) + "%</td><td class='am'>-" + C.maxDD.toFixed(0) + "%</td><td>" + C.trades + "</td><td>" + C.wr + "%</td><td>" + verdict + "</td></tr>";
+      r8 += "<tr><td>" + C.coin + (C.coin === TDATA.meta.inst.split(" ")[0] ? " <span class='mut'>(基准)</span>" : "") + "</td><td class='" + (C.cagr >= 0 ? "up" : "dn") + "'>" + C.cagr.toFixed(1) + "%</td><td class='" + (C.total >= 0 ? "up" : "dn") + "'>" + (C.total >= 0 ? "+" : "") + C.total.toFixed(0) + "%</td><td class='am'>-" + C.maxDD.toFixed(0) + "%</td><td>" + C.trades + "</td><td>" + C.wr + "%</td><td>" + verdict + "</td></tr>";
     }
     var P8 = TDATA8.portfolio;
     r8 += "<tr style='background:#1a2430;'><td><b>等权组合×8</b></td><td class='up'><b>" + P8.cagr.toFixed(1) + "%</b></td><td class='up'><b>+" + P8.total.toFixed(0) + "%</b></td><td class='am'><b>-" + P8.maxDD.toFixed(0) + "%</b></td><td><b>" + P8.trades + "</b></td><td>—</td><td>分散但稀释</td></tr>";

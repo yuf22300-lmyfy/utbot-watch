@@ -11,7 +11,7 @@
   "sinceFill": 2415.58,
   "flipCount": 1,
   "seededAt": "2026-09-15T18:45:00.000Z",
-  "lastEqTs": 1789872424995,
-  "updatedAt": "2026-09-20T02:47:04.995Z",
+  "lastEqTs": 1789894525803,
+  "updatedAt": "2026-09-20T08:55:25.803Z",
   "note": "signal source=ETH-USDT-SWAP (matches TV chart OKX perp feed and the traded instrument); flip#1: signal bar 22:30-22:45 closed 22:45 BJ @2415.57, engine fill 2415.58, actual OKX fill 2415 at 22:45 (user-confirmed) - to-the-cent match"
 }

@@ -74,7 +74,11 @@ async function fetchPage(after, allowCandles) {
   const eq = core.computeEquity(bars, KEY, ALEN, BARMS, 0.001, 100);
   console.log(`EQUITY eq=${eq.eq} ret=${eq.retPct}% realized=${eq.realized} upl=${eq.position ? eq.position.upl : 0} dd=${eq.maxDDPct}% trades=${eq.trades.length} wr=${eq.winRate}% curvePts=${eq.curve.length}`);
   const EQ_THROTTLE_MS = 6 * 3600 * 1000; // curve refresh cadence; flips always push immediately
-  const needEq = act !== 'nochange' || !state || !state.lastEqTs || (Date.now() - state.lastEqTs > EQ_THROTTLE_MS);
+  // fill-pending resolution: a flip detected on the run right at signal-bar-close writes
+  // pre-fill equity + stamps lastEqTs; without this guard the post-fill equity would be
+  // throttled for the full 6h window (bug seen 2026-09-21 flip#2).
+  const pendingFill = state && typeof state.note === 'string' && state.note.indexOf('fill-pending') === 0;
+  const needEq = act !== 'nochange' || !state || !state.lastEqTs || (Date.now() - state.lastEqTs > EQ_THROTTLE_MS) || pendingFill;
 
   if (act === 'nochange' && !needEq) {
     console.log(`NO_CHANGE dir=${state.dir} since=${bjTime(state.sinceCloseTs)}BJ`);
@@ -120,7 +124,7 @@ async function fetchPage(after, allowCandles) {
       sinceStop: sig.sinceStop, sinceFill: sig.sinceFill,
       prevDir: state.prevDir, prevSinceCloseTs: state.prevSinceCloseTs,
       flipCount: state.flipCount || 1, seededAt: state.seededAt,
-      lastEqTs: Date.now(), updatedAt: new Date().toISOString(), note: state.note || ''
+      lastEqTs: Date.now(), updatedAt: new Date().toISOString(), note: pendingFill ? '' : (state.note || '')
     };
     fs.writeFileSync('state.json', JSON.stringify(st, null, 2) + '\n');
     console.log(`EQ_REFRESH dir=${sig.dir} since=${bjTime(sig.sinceCloseTs)}BJ`);

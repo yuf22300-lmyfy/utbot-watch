@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "engine": "ut_hybrid.js (16/16 certified router: longs->SPOT, shorts->SWAP, signals on SWAP feed)",
+  "status": "shadow (reconcile 2/5) - TV remains the boss until 5/5 anchors",
+  "realAccount": {
+    "initU": 150,
+    "lev": 2,
+    "startISO": "2026-09-15T22:45:00+08:00",
+    "note": "user-confirmed 2026-09-21: first capital 150U at the 09-15 flip, 2x leverage"
+  },
+  "handoverPlan": [
+    "gate: 5 consecutive three-way anchors (engine/TV/real fill) in reconcile.md",
+    "at handover: close signal-bot swap position, executor opens hybrid book (longs on SPOT no leverage, shorts on SWAP)",
+    "leverage: per 200U plan, switch day drops 2x -> 1x on the UB leg (2x DD 50-60% vs 1x 33% baseline)",
+    "executor book starts with the real account equity at switch moment - the 9-15 history below stays as pre-handover record"
+  ],
+  "preHandoverBook": [
+    { "no": 1, "time": "2026-09-15 22:45 BJ", "dir": "SHORT", "entry": 2415.58, "exit": 2740.63, "exitTime": "2026-09-21 17:45 BJ", "pxMove": -0.1348, "lev": 2, "pnlU": -40.2, "note": "signal bot executed; anchor#1 exact match" }
+  ],
+  "currentPosition": { "dir": "LONG", "since": "2026-09-21 17:45 BJ", "entry": 2740.63, "engineStop": 1860.10, "lev": 2 },
+  "equityNow": 109.8,
+  "equityAsOf": "2026-09-21T19:30:00+08:00"
+}

@@ -8,11 +8,11 @@
   "sinceCloseTs": 1789983900000,
   "sincePx": 2740.63,
   "sinceStop": 1860.0994558300247,
-  "sinceFill": null,
+  "sinceFill": 2740.63,
   "prevDir": -1,
   "prevSinceCloseTs": 1789483500000,
   "flipCount": 2,
-  "lastEqTs": 1789984264215,
-  "updatedAt": "2026-09-21T09:51:04.215Z",
-  "note": "fill-pending (signal bar is the newest closed bar)"
+  "lastEqTs": 1789985925192,
+  "updatedAt": "2026-09-21T10:18:45.192Z",
+  "note": ""
 }

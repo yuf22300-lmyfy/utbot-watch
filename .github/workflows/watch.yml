@@ -21,6 +21,10 @@ jobs:
         with:
           node-version: 20
       - name: Run shadow engine
+        env:
+          OKX_API_KEY: ${{ secrets.OKX_API_KEY }}
+          OKX_API_SECRET: ${{ secrets.OKX_API_SECRET }}
+          OKX_API_PASSPHRASE: ${{ secrets.OKX_API_PASSPHRASE }}
         run: node watch.js
       - name: Commit state if changed
         run: |

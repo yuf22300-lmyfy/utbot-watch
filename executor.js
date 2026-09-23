@@ -61,15 +61,25 @@ async function runExecutor(sig, bjTime, utcTime) {
   const cfg = { key: process.env.OKX_API_KEY, secret: process.env.OKX_API_SECRET, pass: process.env.OKX_API_PASSPHRASE };
   if (!cfg.key || !cfg.secret || !cfg.pass) { log('no keys in env — executor shadow only'); return lines; }
 
+  // account config: adapt to net_mode vs long_short_mode
+  const cfgs = await okxCall('GET', '/api/v5/account/config', null, cfg);
+  const posMode = cfgs && cfgs[0] && cfgs[0].posMode ? cfgs[0].posMode : 'net_mode';
+  log('posMode=' + posMode);
+
   // instrument meta
   const insts = await okxCall('GET', '/api/v5/public/instruments?instType=SWAP&instId=' + INST, null, cfg);
   const ctVal = parseFloat(insts[0].ctVal); // ETH per contract
   log('inst=' + INST + ' ctVal=' + ctVal + ' lev=' + LEV + 'x minEq=' + MIN_EQ);
 
-  // position + equity
+  // position + equity (aggregate long/short into net for direction logic)
   const poss = await okxCall('GET', '/api/v5/account/positions?instId=' + INST, null, cfg);
-  const pos = poss && poss.length ? poss[0] : null;
-  const posSz = pos ? parseFloat(pos.pos) : 0; // net mode: +long / -short contracts
+  let posSz = 0;
+  for (const p of (poss || [])) {
+    const sz = parseFloat(p.pos || 0);
+    if (String(p.posSide || 'net') === 'long') posSz += sz;
+    else if (String(p.posSide || 'net') === 'short') posSz -= sz;
+    else posSz += sz; // net mode
+  }
   const bal = await okxCall('GET', '/api/v5/account/balance?ccy=USDT', null, cfg);
   let eqU = 0;
   try { eqU = parseFloat(bal[0].details.filter(d => d.ccy === 'USDT')[0].eq) || 0; } catch (e) { eqU = 0; }
@@ -86,11 +96,26 @@ async function runExecutor(sig, bjTime, utcTime) {
     log('equity ' + eqU.toFixed(1) + ' < floor ' + MIN_EQ + ' — will not open');
   } else {
     const orders = [];
-    if (posDir !== 0 && posDir !== sig.dir) orders.push({ side: posSz > 0 ? 'sell' : 'buy', sz: Math.abs(posSz), tag: 'CLOSE-old' });
-    if (desiredCt > 0 && sig.dir !== 0) orders.push({ side: sig.dir === 1 ? 'buy' : 'sell', sz: desiredCt, tag: 'OPEN-' + (sig.dir === 1 ? 'LONG' : 'SHORT') });
+    if (posDir !== 0 && posDir !== sig.dir) {
+      if (posMode === 'long_short_mode') {
+        // close old side by posSide + reduceOnly
+        if (posSz > 0) orders.push({ side: 'sell', posSide: 'long', reduceOnly: true, sz: Math.abs(posSz), tag: 'CLOSE-old' });
+        else orders.push({ side: 'buy', posSide: 'short', reduceOnly: true, sz: Math.abs(posSz), tag: 'CLOSE-old' });
+      } else {
+        orders.push({ side: posSz > 0 ? 'sell' : 'buy', sz: Math.abs(posSz), tag: 'CLOSE-old' });
+      }
+    }
+    if (desiredCt > 0 && sig.dir !== 0) {
+      if (posMode === 'long_short_mode') {
+        orders.push({ side: sig.dir === 1 ? 'buy' : 'sell', posSide: sig.dir === 1 ? 'long' : 'short', sz: desiredCt, tag: 'OPEN-' + (sig.dir === 1 ? 'LONG' : 'SHORT') });
+      } else {
+        orders.push({ side: sig.dir === 1 ? 'buy' : 'sell', sz: desiredCt, tag: 'OPEN-' + (sig.dir === 1 ? 'LONG' : 'SHORT') });
+      }
+    }
     for (const o of orders) {
       const path = '/api/v5/trade/order';
-      const body = { instId: INST, tdMode: 'isolated', side: o.side, posSide: 'net', ordType: 'market', sz: String(o.sz) };
+      const body = { instId: INST, tdMode: 'isolated', side: o.side, posSide: o.posSide || 'net', ordType: 'market', sz: String(o.sz) };
+      if (o.reduceOnly) body.reduceOnly = true;
       if (live) {
         if (o.tag.indexOf('OPEN') === 0) {
           try { await okxCall('POST', '/api/v5/account/set-leverage', { instId: INST, lever: String(LEV), mgnMode: 'isolated' }, cfg); } catch (e) { log('set-leverage: ' + e.message); }

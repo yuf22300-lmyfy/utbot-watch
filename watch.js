@@ -73,6 +73,17 @@ async function fetchPage(after, allowCandles) {
   // equity replay for the handbook page (100U 1x compound baseline, 0.1%/side)
   const eq = core.computeEquity(bars, KEY, ALEN, BARMS, 0.001, 100);
   console.log(`EQUITY eq=${eq.eq} ret=${eq.retPct}% realized=${eq.realized} upl=${eq.position ? eq.position.upl : 0} dd=${eq.maxDDPct}% trades=${eq.trades.length} wr=${eq.winRate}% curvePts=${eq.curve.length}`);
+
+  // ===== optional live executor (opt-in; failures NEVER break the shadow pipeline) =====
+  if (fs.existsSync('executor/ENABLE')) {
+    try {
+      const exec = require('./executor.js');
+      await exec.runExecutor(sig, bjTime, utcTime);
+    } catch (e) {
+      console.log('EXEC ERROR (shadow pipeline unaffected): ' + (e && e.message ? e.message : e));
+    }
+  }
+
   const EQ_THROTTLE_MS = 6 * 3600 * 1000; // curve refresh cadence; flips always push immediately
   // fill-pending resolution: a flip detected on the run right at signal-bar-close writes
   // pre-fill equity + stamps lastEqTs; without this guard the post-fill equity would be

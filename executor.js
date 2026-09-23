@@ -41,12 +41,14 @@ async function okxCall(method, path, bodyObj, cfg) {
           },
           body: body || undefined
         });
-        const j = await r.json();
+        const txt = await r.text();
+        let j = null;
+        try { j = JSON.parse(txt); } catch (e) { lastErr = new Error('HTTP ' + r.status + ' non-JSON: ' + txt.slice(0, 120)); throw lastErr; }
         if (j.code === '0') return j.data;
         lastErr = new Error('OKX code=' + j.code + ' msg=' + j.msg);
         if (String(j.code) === '50111' || String(j.code) === '50113') throw lastErr; // bad key: no retry
       } catch (e) { lastErr = e; }
-      await new Promise(res => setTimeout(res, 300 * t));
+      await new Promise(res => setTimeout(res, 400 * t));
     }
   }
   throw lastErr || new Error('OKX_CALL_FAILED');

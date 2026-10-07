@@ -84,6 +84,29 @@ async function fetchPage(after, allowCandles) {
     }
   }
 
+  // ===== real-account snapshot -> _bot/real.json (read-only; 15-min throttle, immediate on position change) =====
+  try {
+    const snapMod = require('./executor.js');
+    const snap = await snapMod.runRealSnapshot();
+    if (snap) {
+      let throttled = false;
+      try {
+        const prev = JSON.parse(fs.readFileSync('_bot/real.json', 'utf8'));
+        const fresh = (Date.now() - new Date(prev.ts).getTime()) < 15 * 60000;
+        const samePos = (snap.pos === null && prev.pos === null) ||
+                        (snap.pos && prev.pos && snap.pos.dir === prev.pos.dir && snap.pos.sz === prev.pos.sz && snap.pos.avgPx === prev.pos.avgPx);
+        if (fresh && samePos && Math.abs((snap.equity || 0) - (prev.equity || 0)) < 0.5) throttled = true;
+      } catch (e) {}
+      if (!throttled) {
+        fs.mkdirSync('_bot', { recursive: true });
+        fs.writeFileSync('_bot/real.json', JSON.stringify(snap) + '\n');
+        console.log('REAL equity=' + snap.equity + ' pos=' + (snap.pos ? (snap.pos.dir > 0 ? 'LONG' : 'SHORT') + snap.pos.sz + 'ct@' + snap.pos.avgPx : 'FLAT'));
+      }
+    }
+  } catch (e) {
+    console.log('REAL SNAPSHOT skipped: ' + (e && e.message ? e.message : e));
+  }
+
   const EQ_THROTTLE_MS = 6 * 3600 * 1000; // curve refresh cadence; flips always push immediately
   // fill-pending resolution: a flip detected on the run right at signal-bar-close writes
   // pre-fill equity + stamps lastEqTs; without this guard the post-fill equity would be

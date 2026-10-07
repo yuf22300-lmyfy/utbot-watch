@@ -137,4 +137,30 @@ async function runExecutor(sig, bjTime, utcTime) {
   return lines;
 }
 
-module.exports = { runExecutor };
+// read-only real-account snapshot for the handbook page (_bot/real.json).
+// runs on every watch tick independent of ENABLE/HALT — reads are always safe.
+async function runRealSnapshot() {
+  const cfg = { key: process.env.OKX_API_KEY, secret: process.env.OKX_API_SECRET, pass: process.env.OKX_API_PASSPHRASE };
+  if (!cfg.key || !cfg.secret || !cfg.pass) return null;
+  const out = { ts: new Date().toISOString(), inst: INST };
+  try {
+    const bal = await okxCall('GET', '/api/v5/account/balance?ccy=USDT', null, cfg);
+    let eq = 0;
+    try { eq = parseFloat(bal[0].details.filter(d => d.ccy === 'USDT')[0].eq) || 0; } catch (e) {}
+    out.equity = Math.round(eq * 100) / 100;
+  } catch (e) { return null; }
+  try {
+    const poss = await okxCall('GET', '/api/v5/account/positions?instId=' + INST, null, cfg);
+    const p = poss && poss.length ? poss[0] : null;
+    if (p && parseFloat(p.pos) !== 0) {
+      out.pos = { dir: p.posSide === 'short' ? -1 : 1, sz: Math.abs(parseFloat(p.pos)),
+                  avgPx: parseFloat(p.avgPx), lever: String(p.lever), margin: Math.round(parseFloat(p.margin) * 100) / 100,
+                  liqPx: parseFloat(p.liqPx), upl: Math.round(parseFloat(p.upl) * 100) / 100 };
+    } else {
+      out.pos = null; // flat
+    }
+  } catch (e) { /* position read failed: still ship equity */ }
+  return out;
+}
+
+module.exports = { runExecutor, runRealSnapshot };

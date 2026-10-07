@@ -61,6 +61,13 @@
   </div>
 </div>
 
+<div class="card" id="realCard" style="border-color:#f0b90b;">
+  <h2>💼 真实账户（OKX 实盘）<span id="realSync" class="mut" style="font-size:11px; font-weight:400; margin-left:8px;"></span></h2>
+  <div id="realSummary" class="mut">等待云端读取你的 OKX 账户（只读，约 15 分钟一更）…</div>
+  <div class="botChips" id="realChips" style="margin-top:8px;"></div>
+  <div class="note" style="margin-top:10px;">数据链：GitHub Actions 用仓库 Secrets 里的 API 密钥<b>只读</b>拉取你的 OKX 权益与持仓（云端只读通道畅通，交易仍由你电脑上的本地执行器完成）。浮盈按页面实时现价计算。</div>
+</div>
+
 <div class="card">
   <h2>这个页面怎么用</h2>
   <div class="note">
@@ -234,6 +241,51 @@ sync();
 loadPx().then(render);
 setInterval(sync, 180000);
 setInterval(function(){ loadPx().then(render); }, 60000);
+
+// ===== real account card (OKX live, pushed by cloud every ~15 min) =====
+var REAL_API = "https://api.github.com/repos/yuf22300-lmyfy/utbot-watch/contents/_bot/real.json";
+var REAL_RAW = "https://raw.githubusercontent.com/yuf22300-lmyfy/utbot-watch/main/_bot/real.json";
+var realData = null;
+function realGet(){
+  return fetchTimeout(REAL_API, 9000).then(function(r){ if (!r.ok) throw new Error("api"); return r.json(); })
+    .then(function(j){
+      if (!j || !j.content) throw new Error("no content");
+      return JSON.parse(decodeURIComponent(escape(atob(String(j.content).replace(/\s/g, "")))));
+    })
+    .catch(function(){ return fetchTimeout(REAL_RAW, 9000).then(function(r){ if (!r.ok) throw new Error("raw"); return r.json(); }); });
+}
+function realRender(){
+  if (!realData) return;
+  document.getElementById("realSync").textContent = " 数据截至 " + bj(new Date(realData.ts).getTime());
+  var d = realData, p = d.pos;
+  var sum = '账户权益 <b style="color:#f0b90b;">' + (d.equity != null ? d.equity.toFixed(2) : "-") + ' USDT</b>';
+  if (p) {
+    sum += ' · 持仓 <b class="' + (p.dir > 0 ? "up" : "dn") + '">' + (p.dir > 0 ? "多" : "空") + ' ' + p.sz + ' 张 @' + p.avgPx.toFixed(1) + '</b>（' + p.lever + 'x 逐仓）';
+  } else if (p === null) {
+    sum += ' · <span class="mut">空仓（等信号或凑整张门槛）</span>';
+  }
+  document.getElementById("realSummary").innerHTML = sum;
+  var chips = "";
+  if (p) {
+    var uplLive = livePx ? p.dir * (livePx - p.avgPx) * p.sz * 0.1 : p.upl;
+    chips += chip("实时浮盈(U)", sgn(uplLive), uplLive >= 0 ? "up" : "dn");
+    chips += chip("开仓价", fmt(p.avgPx, 1), "");
+    chips += chip("强平价", fmt(p.liqPx, 0), "");
+    chips += chip("保证金(U)", fmt(p.margin, 1), "");
+    if (livePx) chips += chip("现价(实时)", fmt(livePx, 1), "");
+  }
+  document.getElementById("realChips").innerHTML = chips;
+}
+function realSync(){
+  realGet().then(function(j){ realData = j; realRender(); })
+    .then(function(){ return loadPx(); }).then(realRender)
+    .catch(function(){
+      document.getElementById("realSync").textContent = " 拉取失败（稍后重试）";
+    });
+}
+realSync();
+setInterval(realSync, 180000);
+setInterval(function(){ if (realData) loadPx().then(realRender); }, 60000);
 </script>
 </body>
 </html>

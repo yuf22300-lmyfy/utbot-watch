@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-15T21:48:40.275Z",
+  "ts": "2026-10-15T23:56:58.975Z",
   "live": false,
   "inst": "ETH-USDT-SWAP",
   "lev": 2,
-  "eq": 134.32207801523361,
+  "eq": 135.77107801523366,
   "posCt": -1,
   "engineDir": -1,
   "desiredCt": 1,
@@ -12,7 +12,7 @@
     "mode=DRY-RUN (executor/ENABLE != LIVE) — no orders will be placed",
     "posMode=long_short_mode",
     "inst=ETH-USDT-SWAP ctVal=0.1 lev=2x minEq=80",
-    "equity=134.32USDT pos=-1ct engineDir=-1",
+    "equity=135.77USDT pos=-1ct engineDir=-1",
     "position matches engine (hysteresis ok) — nothing to do"
   ]
 }

@@ -148,6 +148,7 @@ async function runRealSnapshot() {
     let eq = 0;
     try { eq = parseFloat(bal[0].details.filter(d => d.ccy === 'USDT')[0].eq) || 0; } catch (e) {}
     out.equity = Math.round(eq * 100) / 100;
+    try { out.totalEq = Math.round(parseFloat(bal[0].totalEq) * 100) / 100; } catch (e2) {}
   } catch (e) { return null; }
   try {
     const poss = await okxCall('GET', '/api/v5/account/positions?instId=' + INST, null, cfg);

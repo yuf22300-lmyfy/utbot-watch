@@ -256,9 +256,15 @@ function realGet(){
 }
 function realRender(){
   if (!realData) return;
-  document.getElementById("realSync").textContent = " 数据截至 " + bj(new Date(realData.ts).getTime());
+  document.getElementById("realSync").textContent = " 快照 " + bj(new Date(realData.ts).getTime()) + " · 浮盈实时推算";
   var d = realData, p = d.pos;
-  var sum = '账户权益 <b style="color:#f0b90b;">' + (d.equity != null ? d.equity.toFixed(2) : "-") + ' USDT</b>';
+  var uplSnap = p ? (p.upl || 0) : 0;
+  var uplLive = (p && livePx) ? p.dir * (livePx - p.avgPx) * p.sz * 0.1 : uplSnap;
+  var eqBase = (d.totalEq != null) ? d.totalEq : d.equity;
+  var eqLive = eqBase + (uplLive - uplSnap);
+  var cls0 = eqLive >= 0 ? "" : "dn";
+  var sum = '总权益(实时) <b style="color:#f0b90b;">' + eqLive.toFixed(2) + ' USDT</b>' +
+            ' <span class="mut">(快照 ' + (d.totalEq != null ? d.totalEq : d.equity).toFixed(2) + ')</span>';
   if (p) {
     sum += ' · 持仓 <b class="' + (p.dir > 0 ? "up" : "dn") + '">' + (p.dir > 0 ? "多" : "空") + ' ' + p.sz + ' 张 @' + p.avgPx.toFixed(1) + '</b>（' + p.lever + 'x 逐仓）';
   } else if (p === null) {

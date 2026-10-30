@@ -107,6 +107,22 @@ async function fetchPage(after, allowCandles) {
     console.log('REAL SNAPSHOT skipped: ' + (e && e.message ? e.message : e));
   }
 
+  // ===== trailing-stop (flip line) -> _bot/stop.json (write only when dir/stop changes) =====
+  try {
+    const snapS = { ts: new Date().toISOString(), dir: sig.dir, sincePx: sig.sincePx,
+                    stop: Math.round(sig.stopNow * 100) / 100, lastClose: sig.lastClose };
+    let changedS = true;
+    try {
+      const prevS = JSON.parse(fs.readFileSync('_bot/stop.json', 'utf8'));
+      if (prevS.dir === snapS.dir && Math.abs((prevS.stop || 0) - snapS.stop) < 0.005) changedS = false;
+    } catch (e2) {}
+    if (changedS) {
+      fs.mkdirSync('_bot', { recursive: true });
+      fs.writeFileSync('_bot/stop.json', JSON.stringify(snapS) + '\n');
+      console.log('STOP dir=' + snapS.dir + ' flipLine=' + snapS.stop);
+    }
+  } catch (e3) {}
+
   const EQ_THROTTLE_MS = 6 * 3600 * 1000; // curve refresh cadence; flips always push immediately
   // fill-pending resolution: a flip detected on the run right at signal-bar-close writes
   // pre-fill equity + stamps lastEqTs; without this guard the post-fill equity would be

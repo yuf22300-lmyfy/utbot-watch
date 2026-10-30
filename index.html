@@ -200,7 +200,8 @@ function render(){
   h += chip("复利口径", sgn(st.retPct, 2) + "%", st.retPct >= 0 ? "up" : "dn");
   h += chip("已实现", sgn(st.realized, 2) + " U", st.realized >= 0 ? "up" : "dn");
   h += chip("浮动(引擎)", (pos ? sgn(pos.upl, 2) + " U" : "—"), pos && pos.upl >= 0 ? "up" : "dn");
-  if (liveUp !== null) h += chip("浮动(实时)", sgn(liveUp, 2) + "%", liveUp >= 0 ? "up" : "dn");
+  h += chip("浮动(实时)", (liveUp !== null ? sgn(liveUp, 2) + "%" : "—"), liveUp !== null && liveUp >= 0 ? "up" : "dn");
+  if (stopData) h += chip((stopData.dir > 0 ? "翻空线" : "翻多线"), fmt(stopData.stop, 1), "am");
   h += chip("笔数", (st.trades || 0) + " 笔");
   h += chip("胜率", (st.winRate || 0) + "%");
   h += chip("最大回撤", "-" + fmt(st.maxDDPct, 1) + "%", "am");
@@ -300,6 +301,24 @@ function realSync(){
 realSync();
 setInterval(realSync, 180000);
 setInterval(function(){ if (realData) loadPx().then(realRender); }, 60000);
+
+// ===== flip line (trailing stop) chip =====
+var STOP_API = "https://api.github.com/repos/yuf22300-lmyfy/utbot-watch/contents/_bot/stop.json";
+var STOP_RAW = "https://raw.githubusercontent.com/yuf22300-lmyfy/utbot-watch/main/_bot/stop.json";
+var stopData = null;
+function stopGet(){
+  return fetchTimeout(STOP_API, 9000).then(function(r){ if (!r.ok) throw new Error("api"); return r.json(); })
+    .then(function(j){
+      if (!j || !j.content) throw new Error("no content");
+      return JSON.parse(decodeURIComponent(escape(atob(String(j.content).replace(/\s/g, "")))));
+    })
+    .catch(function(){ return fetchTimeout(STOP_RAW, 9000).then(function(r){ if (!r.ok) throw new Error("raw"); return r.json(); }); });
+}
+function stopSync(){
+  stopGet().then(function(j){ stopData = j; render(); }).catch(function(){});
+}
+stopSync();
+setInterval(stopSync, 180000);
 </script>
 </body>
 </html>

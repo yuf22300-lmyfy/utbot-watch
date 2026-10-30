@@ -57,7 +57,7 @@
   <div class="note" style="margin-top:12px;"><b>交易流水</b>（时间=北京时间；入场=信号K线收盘后次K线开盘成交，与 TV/OKX 对账口径一致）</div>
   <table class="hist" id="tradeT"><thead><tr><th>#</th><th>方向</th><th>入场(北京)</th><th>入场价</th><th>出场(北京)</th><th>出场价</th><th>盈亏%</th><th>盈亏(U)</th><th>权益</th></tr></thead><tbody></tbody></table>
   <div class="note" style="margin-top:10px;">
-    口径说明：曲线与流水为<b>引擎基准账户</b>（100U · 1倍 · 全仓复利 · 0.1%费/边 · 次K线开盘成交），用于和 TV 图/OKX 实盘逐笔对账；你实盘策略的 2 倍杠杆盈亏约为图中数字的 2 倍（回撤也是）。数据每 6 小时刷新一次，翻转时即时推送；现价与浮动为页面实时拉取。
+    口径说明：曲线与流水为<b>引擎基准账户</b>（100U · 1倍 · 全仓复利 · 0.1%费/边 · 次K线开盘成交），用于和 TV 图/OKX 实盘逐笔对账；你实盘策略的 2 倍杠杆盈亏约为图中数字的 2 倍（回撤也是）。数据每 6 小时刷新一次，翻转时即时推送；现价与浮动为页面实时拉取。<b>收益率(加总)</b>=每笔平仓盈亏÷该笔开仓前账户权益的加总（不复利），<b>复利口径</b>=权益÷初始资金−1。
   </div>
 </div>
 
@@ -187,9 +187,17 @@ function render(){
     + (livePx ? ' · <span class="mut">现价</span> <b>' + fmt(livePx) + '</b>' : '');
   var liveUp = null;
   if (pos && livePx) liveUp = pos.dir * (livePx / pos.entryPx - 1) * 100;
+  // 加总口径收益率: sum(每笔平仓盈亏 / 该笔开仓前账户权益)
+  var addRet = 0;
+  (eqData.trades || []).forEach(function(t, i){
+    var before = (t.eq != null && t.pnl != null) ? (t.eq - t.pnl) : null;
+    if (before == null || before <= 0) before = (eqData.stats && eqData.stats.initCap) || 100;
+    addRet += t.pnl / before * 100;
+  });
   var h = '';
   h += chip("权益", fmt(st.eq) + " U");
-  h += chip("总收益", sgn(st.retPct, 2) + "%", st.retPct >= 0 ? "up" : "dn");
+  h += chip("收益率(加总)", sgn(addRet, 2) + "%", addRet >= 0 ? "up" : "dn");
+  h += chip("复利口径", sgn(st.retPct, 2) + "%", st.retPct >= 0 ? "up" : "dn");
   h += chip("已实现", sgn(st.realized, 2) + " U", st.realized >= 0 ? "up" : "dn");
   h += chip("浮动(引擎)", (pos ? sgn(pos.upl, 2) + " U" : "—"), pos && pos.upl >= 0 ? "up" : "dn");
   if (liveUp !== null) h += chip("浮动(实时)", sgn(liveUp, 2) + "%", liveUp >= 0 ? "up" : "dn");
